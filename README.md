@@ -1,6 +1,9 @@
 # 🔬 Statistical-Hypothesis-Testing
 Aplikasi Uji Hipotesis Statistik berbasis Python &amp; Streamlit (Referensi: Levine et al.)
-🔗 **Live Demo:** https://statistical-hypothesis-testing.streamlit.app/
+
+## 🔗 **Live Demo:** 
+klik link berikut untuk mencoba:
+*https://statistical-hypothesis-testing.streamlit.app/*
 
 
 ## ✨ Fitur Utama
