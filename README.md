@@ -18,4 +18,4 @@ Aplikasi Uji Hipotesis Statistik berbasis Python &amp; Streamlit (Referensi: Lev
 ## 🚀 Cara Menjalankan di Lokal
 1. Clone repository ini:
    ```bash
-   git clone (https://github.com/mohamadiqbal69/Statistical-Hypothesis-Testing)]
+🔗 **Live Demo:** [Klik Disini untuk Mencoba]([https://github.com/mohamadiqbal69/Statistical-Hypothesis-Testing])
