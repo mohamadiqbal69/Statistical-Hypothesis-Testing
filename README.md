@@ -17,4 +17,7 @@ Aplikasi Uji Hipotesis Statistik berbasis Python &amp; Streamlit (Referensi: Lev
 
 ## 🚀 Cara Menjalankan di Lokal
 1. Clone repository ini:
-   ```bash [https://github.com/mohamadiqbal69/Statistical-Hypothesis-Testing]
+   https://github.com/mohamadiqbal69/Statistical-Hypothesis-Testing
+   
+📚 Referensi
+Levine, D. M., Szabat, K. A., & Stephan, D. (2017). Statistics for managers using Microsoft Excel (8th ed.). Pearson.
