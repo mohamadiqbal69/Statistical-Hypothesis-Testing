@@ -18,5 +18,5 @@ Aplikasi Uji Hipotesis Statistik berbasis Python &amp; Streamlit (Referensi: Lev
 * **Visualisasi:** Matplotlib
 
 
-📚 Referensi
-Levine, D. M., Szabat, K. A., & Stephan, D. (2017). Statistics for managers using Microsoft Excel (8th ed.). Pearson.
+## 📚 Referensi
+* **Levine, D. M., Szabat, K. A., & Stephan, D. (2017).** Statistics for managers using Microsoft Excel (8th ed.). Pearson.
