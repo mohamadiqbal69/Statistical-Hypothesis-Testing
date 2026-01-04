@@ -7,18 +7,12 @@ import matplotlib.pyplot as plt
 import google.generativeai as genai
 import re 
 
-
 def parse_data(input_text):
-    """
-    Versi Robust: Menerima pemisah koma, spasi, tab, atau enter.
-    Mencegah error jika user memasukkan huruf.
-    """
     if not input_text: 
         return None
     
     try:
         clean_text = re.sub(r'[;,\t\n]', ' ', input_text)
-        
         data_list = []
         for x in clean_text.split():
             try:
@@ -39,23 +33,13 @@ def parse_data(input_text):
         return None
 
 
-# Pastikan import numpy di atas
-# import numpy as np
-
 def get_data_input(label, default_text, key_suffix):
-    """
-    Versi FIXED: Prioritas Upload File > Input Manual.
-    Memperbaiki bug di mana file upload tidak terbaca karena tertimpa input manual.
-    """
     st.markdown(f"**Data {label}**")
-    
     key_text_area = f"text_{key_suffix}"
     
-    # Inisialisasi Session State
     if key_text_area not in st.session_state:
         st.session_state[key_text_area] = default_text
 
-    # --- 1. FITUR SKENARIO DEMO ---
     with st.expander("🎲 Pilih Skenario Demo Data"):
         scenario = st.radio(
             "Ingin hasil uji seperti apa?",
@@ -65,27 +49,36 @@ def get_data_input(label, default_text, key_suffix):
         
         if st.button(f"Terapkan Skenario ({label})", key=f"btn_{key_suffix}"):
             is_group_2 = any(x in key_suffix for x in ['2', 'post', 'w2', 'f2', 'p2'])
-            mu = 50
-            sigma = 5
             
+            base_mu = 50
+            base_sigma = 10 
+            n_samples = 30
+
             if scenario == "Tolak H0 (Signifikan)":
                 if not is_group_2:
-                    mu = 80; sigma = 2   
+                    mu = base_mu + 6 
+                    sigma = base_sigma 
                 else:
-                    mu = 45; sigma = 10  
+                    mu = base_mu - 6 
+                    sigma = base_sigma
             
-            new_data = np.random.normal(mu, sigma, 30).round(1)
+            else: 
+                if not is_group_2:
+                    mu = base_mu + 1 
+                    sigma = base_sigma
+                else:
+                    mu = base_mu - 1 
+                    sigma = base_sigma
+            
+            new_data = np.random.normal(mu, sigma, n_samples).round(1)
             st.session_state[key_text_area] = ", ".join(map(str, new_data))
             st.rerun()
 
-    # --- 2. RENDER TABS (TAMPILAN) ---
     tab_manual, tab_upload = st.tabs(["✍️ Input Manual", "📂 Upload File (CSV/Excel)"])
     
-    # Variabel penampung input (belum diproses)
     manual_input_str = None
     uploaded_file_obj = None
 
-    # Render Tab Manual
     with tab_manual:
         manual_input_str = st.text_area(
             "Masukkan angka (pemisah spasi/koma):", 
@@ -94,7 +87,6 @@ def get_data_input(label, default_text, key_suffix):
             height=100
         )
 
-    # Render Tab Upload
     with tab_upload:
         uploaded_file_obj = st.file_uploader(
             f"Upload CSV/Excel ({label})", 
@@ -102,9 +94,6 @@ def get_data_input(label, default_text, key_suffix):
             key=f"up_{key_suffix}"
         )
 
-    # --- 3. LOGIKA PEMROSESAN DATA (PRIORITAS) ---
-    
-    # PRIORITAS 1: Cek apakah ada file yang diupload?
     if uploaded_file_obj is not None:
         try:
             if uploaded_file_obj.name.endswith('.csv'):
@@ -112,7 +101,6 @@ def get_data_input(label, default_text, key_suffix):
             else:
                 df = pd.read_excel(uploaded_file_obj)
             
-            # Ambil kolom angka saja
             numeric_cols = df.select_dtypes(include=np.number).columns.tolist()
             
             if not numeric_cols:
@@ -128,14 +116,13 @@ def get_data_input(label, default_text, key_suffix):
             st.error(f"Gagal membaca file: {e}")
             return None
 
-    # PRIORITAS 2: Jika tidak ada file, gunakan Input Manual
     if manual_input_str:
         return parse_data(manual_input_str)
     
     return None
 
+
 def check_normality(data, label):
-    """Melakukan uji Shapiro-Wilk untuk asumsi normalitas."""
     if len(data) < 3:
         st.warning(f"⚠️ Data {label} terlalu sedikit untuk uji normalitas.")
         return True 
@@ -152,7 +139,6 @@ def check_normality(data, label):
 
 
 def calculate_cohens_d(d1, d2):
-    """Menghitung Effect Size (Cohen's d)."""
     n1, n2 = len(d1), len(d2)
     s1, s2 = np.var(d1, ddof=1), np.var(d2, ddof=1)
     s_pooled = np.sqrt(((n1 - 1) * s1 + (n2 - 1) * s2) / (n1 + n2 - 2))
@@ -167,6 +153,29 @@ def interpret_effect_size(d):
     elif d < 0.5: return "Kecil (Small)"
     elif d < 0.8: return "Sedang (Medium)"
     else: return "Besar (Large)"
+
+
+def render_hypotheses(test_name, param_latex, val_latex, direction):
+    st.markdown("### 1. Hipotesis Statistik")
+    
+    h0 = ""
+    h1 = ""
+    d = direction.lower()
+    
+    if "two" in d or "dua" in d:
+        h0 = f"H_0: {param_latex} = {val_latex}"
+        h1 = f"H_1: {param_latex} \\neq {val_latex}"
+    
+    elif "right" in d or "kanan" in d:
+        h0 = f"H_0: {param_latex} \\le {val_latex}"
+        h1 = f"H_1: {param_latex} > {val_latex}"
+        
+    elif "left" in d or "kiri" in d:
+        h0 = f"H_0: {param_latex} \\ge {val_latex}"
+        h1 = f"H_1: {param_latex} < {val_latex}"
+        
+    st.latex(h0)
+    st.latex(h1)
 
 
 def plot_distribution(dist_name, stat_val, crit_val, alpha, test_type, df1=None, df2=None):
@@ -190,7 +199,6 @@ def plot_distribution(dist_name, stat_val, crit_val, alpha, test_type, df1=None,
     
     ax.plot(x, y, label=label_dist, color='#2563EB', linewidth=2)
     ax.fill_between(x, y, alpha=0.1, color='#2563EB')
-
 
     type_lower = test_type.lower()
     
@@ -220,24 +228,31 @@ def plot_distribution(dist_name, stat_val, crit_val, alpha, test_type, df1=None,
     ax.spines['right'].set_visible(False)
     st.pyplot(fig)
 
+
 def display_test_result(stat_val, crit_val, p_val, alpha, test_type, model_label='Z', reject=False, dist_name='normal', df1=None, df2=None):
     st.markdown("---")
-    st.subheader("📊 Hasil Perhitungan Statistik")
+    st.subheader(f"📊 Hasil Perhitungan Statistik ({model_label}-Test)")
+
+    if p_val < 0.0001:
+        p_str = "< 0.0001"
+    else:
+        p_str = f"{p_val:.4f}"
 
     c1, c2, c3 = st.columns(3)
     c1.metric(f"{model_label}-Hitung", f"{stat_val:.4f}")
     c2.metric("Critical Value", f"{crit_val:.4f}")
-    c3.metric("P-Value", f"{p_val:.5f}", delta_color="inverse")
+    c3.metric("P-Value", p_str, delta_color="inverse")
 
     plot_distribution(dist_name, stat_val, crit_val, alpha, test_type, df1, df2)
 
     st.markdown("### 📝 Kesimpulan")
     if reject:
         st.error(f"**Keputusan: Tolak H0** (Signifikan)")
-        st.write(f"Karena P-Value ({p_val:.5f}) < Alpha ({alpha}), maka kita memiliki cukup bukti untuk menolak Hipotesis Nol.")
+        st.write(f"Karena {model_label}-Hitung berada di daerah penolakan (atau P-Value {p_str} < Alpha {alpha}), maka kita memiliki cukup bukti untuk menolak Hipotesis Nol.")
     else:
         st.success(f"**Keputusan: Gagal Tolak H0** (Tidak Signifikan)")
-        st.write(f"Karena P-Value ({p_val:.5f}) > Alpha ({alpha}), maka bukti belum cukup untuk menolak Hipotesis Nol.")
+        st.write(f"Karena {model_label}-Hitung TIDAK berada di daerah penolakan (atau P-Value {p_str} > Alpha {alpha}), maka bukti belum cukup untuk menolak Hipotesis Nol.")
+
 
 def load_ai_consultant():
     st.header("🤖 AI Statistical Consultant")
@@ -281,7 +296,6 @@ def load_ai_consultant():
 
         try:
             genai.configure(api_key=api_key)
-            
             model = genai.GenerativeModel('models/gemini-2.5-flash') 
             
             system_prompt = f"""
@@ -315,8 +329,10 @@ def load_ai_consultant():
             st.error(f"Terjadi kesalahan: {e}")
             st.info("Tips: Pastikan API Key benar. Jika error model 404, coba update library 'google-generativeai'.")
 
+
 def load_home():
-    pass 
+    st.title("📊 Statistical Analysis Tool")
+    st.write("Selamat datang! Silakan pilih menu di sidebar untuk memulai analisis statistik.")
 
 
 def load_uji_proporsi_1_sampel(title):
@@ -324,21 +340,9 @@ def load_uji_proporsi_1_sampel(title):
     with st.expander("📘 Penjelasan & Rumus (Levine Ch. 9.4)", expanded=False):
         st.write("""
         **Z-Test for the Proportion (One Sample)**
-        
         Uji ini digunakan untuk menentukan apakah proporsi populasi ($p$ atau $\pi$) berbeda dari nilai standar atau historis tertentu ($\pi_0$).
-        
-        **Asumsi (Levine Ch. 9.4):**
-        1. Data yang dipilih adalah sampel acak.
-        2. Sampel independen satu sama lain.
-        3. Jumlah item (n) cukup besar sehingga $n\pi \ge 5$ dan $n(1-\pi) \ge 5$, sehingga distribusi normal dapat digunakan sebagai pendekatan distribusi binomial.
         """)
         st.latex(r"Z_{STAT} = \frac{p - \pi}{\sqrt{\frac{\pi(1-\pi)}{n}}}")
-        st.write("""
-        Dimana:
-        * $p = X/n$ (Proporsi Sampel)
-        * $\pi$ = Proporsi Hipotesis (Populasi)
-        * $n$ = Ukuran Sampel
-        """)
 
     c1, c2 = st.columns(2)
     with c1:
@@ -351,6 +355,8 @@ def load_uji_proporsi_1_sampel(title):
     jenis_uji = st.selectbox("Jenis Uji", ("Two-sided (Dua Arah)", "Right-sided (Uji Kanan)", "Left-sided (Uji Kiri)"))
 
     if st.button("Hitung Z Proporsi"):
+        render_hypotheses("Proporsi 1 Sampel", r"\pi", f"{pi0}", jenis_uji)
+
         p_hat = x / n
         denom = np.sqrt((pi0 * (1 - pi0)) / n)
         
@@ -375,21 +381,15 @@ def load_uji_proporsi_1_sampel(title):
         st.info(f"Proporsi Sampel (p) = {p_hat:.4f}")
         display_test_result(z_score, z_crit, p_val, alpha, jenis_uji, 'Z', reject, 'normal')
 
+
 def load_uji_proporsi_2_sampel(title):
     st.header(title)
     with st.expander("📘 Penjelasan & Rumus (Levine Ch. 10.3)", expanded=False):
         st.write("""
         **Z-Test for the Difference Between Two Proportions**
-        
         Uji ini digunakan untuk menguji apakah terdapat perbedaan yang signifikan antara proporsi dua populasi independen.
-        
-        **Asumsi:**
-        1. Sampel diambil secara acak dan independen dari dua populasi.
-        2. $n\pi \ge 5$ dan $n(1-\pi) \ge 5$ untuk kedua kelompok.
         """)
         st.latex(r"Z_{STAT} = \frac{p_1 - p_2}{\sqrt{\bar{p}(1-\bar{p})\left(\frac{1}{n_1} + \frac{1}{n_2}\right)}}")
-        st.write("Dimana $\\bar{p}$ (pooled proportion) adalah:")
-        st.latex(r"\bar{p} = \frac{X_1 + X_2}{n_1 + n_2}")
     
     c1, c2 = st.columns(2)
     with c1:
@@ -405,6 +405,8 @@ def load_uji_proporsi_2_sampel(title):
     jenis_uji = st.selectbox("Jenis Uji", ("Two-sided", "Right-sided", "Left-sided"))
 
     if st.button("Hitung Z Proporsi 2 Sampel"):
+        render_hypotheses("Proporsi 2 Sampel", r"\pi_1 - \pi_2", "0", jenis_uji)
+
         p1, p2 = x1/n1, x2/n2
         p_pool = (x1 + x2) / (n1 + n2)
         denom = np.sqrt(p_pool * (1 - p_pool) * (1/n1 + 1/n2))
@@ -432,22 +434,20 @@ def load_z_test_1(title):
     with st.expander("📘 Penjelasan & Rumus (Z-Test)", expanded=False):
         st.write("""
         **One-sample Z-test** digunakan untuk menentukan apakah rata-rata populasi ($\mu$) berbeda secara signifikan dari nilai hipotesis ($\mu_0$).
-        
-        **Syarat Penggunaan:**
-        1. **Simpangan Baku Populasi ($\sigma$) Diketahui.**
-        2. Data Berdistribusi Normal atau $n \ge 30$.
         """)
         st.latex(r"Z_{STAT} = \frac{\bar{x} - \mu_0}{\sigma / \sqrt{n}}")
     
-    mu0 = st.number_input("Rata-rata Hipotesis (μ0)", value=0.0)
-    sigma = st.number_input("Simpangan Baku Populasi (σ)", value=1.0)
+    mu0 = st.number_input("Rata-rata Hipotesis (μ0)", value=50.0)
+    sigma = st.number_input("Simpangan Baku Populasi (σ)", value=10.0)
     alpha = st.number_input("Alpha", 0.05)
     jenis_uji = st.selectbox("Jenis Uji", ("Two-sided", "Right-sided", "Left-sided"))
     
-    data = get_data_input("Sampel", "10, 12, 11, 14, 13", "z1")
+    data = get_data_input("Sampel", "50, 52, 51, 54, 53", "z1")
 
     if st.button("Hitung Z-Test"):
         if data is not None:
+            render_hypotheses("Z-Test 1 Sampel", r"\mu", f"{mu0}", jenis_uji)
+
             n = len(data)
             xbar = np.mean(data)
             z_score = (xbar - mu0) / (sigma / np.sqrt(n))
@@ -468,12 +468,12 @@ def load_z_test_1(title):
             st.info(f"Mean Sampel: {xbar:.4f}")
             display_test_result(z_score, z_crit, p_val, alpha, jenis_uji, 'Z', reject, 'normal')
 
+
 def load_t_test_1(title):
     st.header(title)
     with st.expander("📘 Penjelasan & Rumus (Levine Ch. 9.2)", expanded=False):
         st.write("""
         **t-Test for the Mean (Sigma Unknown)**
-        
         Digunakan ketika deviasi standar populasi ($\sigma$) tidak diketahui. Statistik uji mengikuti distribusi t Student dengan derajat kebebasan $n-1$.
         """)
         st.latex(r"t_{STAT} = \frac{\bar{X} - \mu}{S / \sqrt{n}}")
@@ -488,6 +488,7 @@ def load_t_test_1(title):
     if st.button("Hitung t-Test"):
         if data is not None and len(data) > 1:
             check_normality(data, "Sampel") 
+            render_hypotheses("t-Test 1 Sampel", r"\mu", f"{mu0}", jenis_uji)
             
             n = len(data)
             x_bar = np.mean(data)
@@ -511,6 +512,7 @@ def load_t_test_1(title):
             st.info(f"Mean: {x_bar:.4f} | Std Dev: {s:.4f}")
             display_test_result(t_stat, t_crit, p_val, alpha, jenis_uji, 't', reject, 't', df1=df)
 
+
 def load_pooled_t_test(title):
     st.header(title)
     
@@ -518,15 +520,8 @@ def load_pooled_t_test(title):
         st.markdown("""
         **Pooled-Variance t-Test** digunakan untuk membandingkan rata-rata dua populasi independen 
         dengan asumsi bahwa varians kedua populasi adalah **SAMA** ($\sigma_1^2 = \sigma_2^2$).
-        
-        **Asumsi:**
-        1. Sampel diambil secara acak dan independen.
-        2. Kedua populasi berdistribusi normal.
-        3. Varians kedua populasi homogen.
         """)
         st.latex(r"t_{STAT} = \frac{(\bar{X}_1 - \bar{X}_2) - (\mu_1 - \mu_2)}{\sqrt{S_p^2 \left(\frac{1}{n_1} + \frac{1}{n_2}\right)}}")
-        st.write("Dimana $S_p^2$ (Pooled Variance) adalah:")
-        st.latex(r"S_p^2 = \frac{(n_1 - 1)S_1^2 + (n_2 - 1)S_2^2}{(n_1 - 1) + (n_2 - 1)}")
 
     col_param, col_data = st.columns([1, 2])
     with col_param:
@@ -537,15 +532,16 @@ def load_pooled_t_test(title):
     with col_data:
         st.subheader("📂 Input Data")
         tab1, tab2 = st.tabs(["Grup 1", "Grup 2"])
-        with tab1: d1 = get_data_input("Sampel 1", "10, 12, 11, 14, 13", "p1")
-        with tab2: d2 = get_data_input("Sampel 2", "14, 13, 15, 16, 14", "p2")
+        with tab1: d1 = get_data_input("Sampel 1", "52, 55, 50, 58, 54", "p1")
+        with tab2: d2 = get_data_input("Sampel 2", "50, 48, 51, 49, 52", "p2")
 
-    # 3. EKSEKUSI
     if st.button("🚀 Jalankan Analisis Lengkap", type="primary"):
         if d1 is not None and d2 is not None:
             n1, n2 = len(d1), len(d2)
             
             st.markdown("---")
+            render_hypotheses("Pooled t-Test", r"\mu_1 - \mu_2", "0", jenis_uji)
+
             st.subheader("1. Pengecekan Asumsi")
             c1, c2 = st.columns(2)
             with c1: check_normality(d1, "Grup 1")
@@ -594,18 +590,16 @@ def load_pooled_t_test(title):
         else:
             st.error("Data kosong.")
 
+
 def load_welch_t_test(title):
     st.header(title)
     with st.expander("📘 Penjelasan & Rumus (Levine Ch. 10.1)", expanded=False):
         st.write("""
         **Separate-Variance t Test (Welch)**
-        
         Digunakan ketika varians populasi **tidak sama** ($\sigma_1^2 \\neq \sigma_2^2$). 
         Disebut juga Welch's t-test. Derajat kebebasan dihitung menggunakan rumus Satterthwaite.
         """)
         st.latex(r"t_{STAT} = \frac{(\bar{X}_1 - \bar{X}_2)}{\sqrt{\frac{S_1^2}{n_1} + \frac{S_2^2}{n_2}}}")
-        st.write("Derajat Kebebasan (v) dihitung dengan rumus pendekatan:")
-        st.latex(r"v = \frac{(\frac{S_1^2}{n_1} + \frac{S_2^2}{n_2})^2}{ \frac{(\frac{S_1^2}{n_1})^2}{n_1-1} + \frac{(\frac{S_2^2}{n_2})^2}{n_2-1} }")
         
     c1, c2 = st.columns(2)
     with c1: d1 = get_data_input("Grup 1", "78, 85, 80, 92, 75", "w1")
@@ -616,6 +610,8 @@ def load_welch_t_test(title):
 
     if st.button("Hitung Welch t-Test"):
         if d1 is not None and d2 is not None:
+            render_hypotheses("Welch t-Test", r"\mu_1 - \mu_2", "0", jenis_uji)
+
             n1, n2 = len(d1), len(d2)
             v1, v2 = np.var(d1, ddof=1), np.var(d2, ddof=1)
             se = np.sqrt(v1/n1 + v2/n2)
@@ -641,21 +637,16 @@ def load_welch_t_test(title):
             st.info(f"Selisih Mean: {np.mean(d1)-np.mean(d2):.4f} | df: {df:.2f}")
             display_test_result(t_stat, t_crit, p_val, alpha, jenis_uji, 't', reject, 't', df1=df)
 
+
 def load_paired_t_test(title):
     st.header(title)
     with st.expander("📘 Penjelasan & Rumus (Levine Ch. 10.2)", expanded=False):
         st.write("""
         **Paired t Test (Uji t Berpasangan)**
-        
         Digunakan ketika sampel saling berhubungan (dependent), misalnya pengukuran "Pre-test" dan "Post-test" pada subjek yang sama.
         Kita menguji selisih ($D_i$) antara pasangan nilai.
         """)
         st.latex(r"t_{STAT} = \frac{\bar{D} - \mu_D}{S_D / \sqrt{n}}")
-        st.write(r"""
-        Dimana:
-        * $\bar{D}$ = Rata-rata selisih sampel
-        * $S_D$ = Simpangan baku selisih sampel
-        """)
     
     c1, c2 = st.columns(2)
     with c1: d1 = get_data_input("Sebelum (Pre)", "50, 60, 70", "pair1")
@@ -666,6 +657,8 @@ def load_paired_t_test(title):
 
     if st.button("Hitung Paired t"):
         if d1 is not None and d2 is not None and len(d1) == len(d2):
+            render_hypotheses("Paired t-Test", r"\mu_D", "0", jenis_uji)
+
             diff = d1 - d2
             check_normality(diff, "Selisih Data (Diff)")
             
@@ -693,17 +686,16 @@ def load_paired_t_test(title):
         else:
             st.error("Jumlah data harus sama.")
 
+
 def load_f_test(title):
     st.header(title)
     with st.expander("📘 Penjelasan & Rumus (Levine Ch. 10.4)", expanded=False):
         st.write("""
         **F Test for the Ratio of Two Variances**
-        
         Digunakan untuk menguji apakah dua populasi memiliki varians yang sama ($\sigma_1^2 = \sigma_2^2$). 
         Dalam menghitung rasio F, varians sampel yang lebih besar ($S_1^2$) selalu ditempatkan di pembilang (numerator).
         """)
         st.latex(r"F_{STAT} = \frac{S_1^2}{S_2^2}")
-        st.write("Dimana $S_1^2 \ge S_2^2$.")
     
     c1, c2 = st.columns(2)
     with c1: d1 = get_data_input("Grup 1", "7, 9, 12, 10, 8", "f1")
@@ -713,6 +705,10 @@ def load_f_test(title):
     
     if st.button("Hitung F-Test"):
         if d1 is not None and d2 is not None:
+            st.markdown("### 1. Hipotesis Statistik")
+            st.latex(r"H_0: \sigma_1^2 = \sigma_2^2")
+            st.latex(r"H_1: \sigma_1^2 \neq \sigma_2^2")
+
             v1, v2 = np.var(d1, ddof=1), np.var(d2, ddof=1)
             n1, n2 = len(d1), len(d2)
             
