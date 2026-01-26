@@ -11,7 +11,7 @@ klik link berikut untuk mencoba:
 * **Validasi Konsep:** Rumus disesuaikan dengan standar akademik (Levine Ch. 9 & 10).
 * **Visualisasi:** Grafik distribusi normal dan daerah penolakan hipotesis.
 * **Fleksibel:** Menerima input data manual atau upload file CSV/Excel.
-* **AI Consultant:** Terintegrasi dengan Google Gemini untuk interpretasi hasil (Opsional).
+* **AI Consultant:** Terintegrasi dengan Google Gemini untuk menetukan jenis uji yang akan digunakan (Opsional).
 
 
 ## 🛠️ Teknologi yang Digunakan
