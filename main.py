@@ -1,17 +1,14 @@
-# main.py
 import streamlit as st
 import styles
 import content
 
 
-# 1. Page Configuration
 st.set_page_config(
     page_title="StatLab: Statistical Hypothesis Testing", 
     layout="wide",
     page_icon="📈"
 )
 
-# 2. Load Styles
 styles.load_css()
 
 with st.sidebar:
@@ -32,9 +29,9 @@ main_menu = st.sidebar.radio(
      "📚 Analisis Statistik"]
 )
 
-# 3. Routing Logic
+
 if main_menu == "🏠 Home":
-    # Hero Section yang lebih profesional
+    
     st.title("Statistical Hypothesis Testing Suite")
     st.markdown("""
     <div style="background-color:#EFF6FF; padding: 20px; border-radius: 10px; border-left: 5px solid #2563EB;">
@@ -59,7 +56,7 @@ if main_menu == "🏠 Home":
             """
         )
 
-    # Kartu 2: Uji Rata-rata
+    
     with col2:
         st.container(border=True)
         st.subheader("Uji Rata-rata")
@@ -74,7 +71,7 @@ if main_menu == "🏠 Home":
             """
         )
 
-    # Kartu 3: Uji Varians
+    
     with col3:
         st.container(border=True)
         st.subheader("Uji Varians") 
@@ -94,7 +91,7 @@ elif main_menu == "🤖 AI Consultant":
     content.load_ai_consultant()
     
 elif main_menu == "📚 Analisis Statistik":
-    # Menu yang lebih rapi
+    
     menu = st.sidebar.selectbox(
         "Pilih Metode Uji:",
         [
